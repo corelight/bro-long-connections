@@ -32,7 +32,7 @@ export {
 
 	## The default duration that you are locally 
 	## considering a connection to be "long".  
-	const default_durations = Durations(10min, 30min, 1hr, 12hr, 24hrs, 3days) &redef;
+	const default_durations = Durations(15sec, 15sec, 15sec, 15sec, 24hrs, 3days) &redef;
 
 	## These are special cases for particular hosts or subnets
 	## that you may want to watch for longer or shorter
