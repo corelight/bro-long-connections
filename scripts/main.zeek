@@ -32,12 +32,18 @@ export {
 
 	## The default duration that you are locally 
 	## considering a connection to be "long".  
-	const default_durations = Durations(10min, 30min, 1hr, 12hr, 24hrs, 3days) &redef;
+	option default_durations = Durations(10min, 30min, 1hr, 12hr, 24hrs, 3days);
 
 	## These are special cases for particular hosts or subnets
 	## that you may want to watch for longer or shorter
 	## durations than the default.
-	const special_cases: table[subnet] of Durations = {} &redef;
+	option special_cases: table[subnet] of Durations = {};
+
+	## Should the last duration be repeated or should the tracking end.
+	option repeat_last_duration: bool = F;
+
+	## Should a NOTICE be raised
+	option do_notice: bool = T;
 }
 
 redef record connection += {
@@ -72,14 +78,20 @@ function long_callback(c: connection, cnt: count): interval
 		Conn::set_conn_log_data_hack(c);
 		Log::write(LongConnection::LOG, c$conn);
 
-		local message = fmt("%s -> %s:%s remained alive for longer than %s", 
-		                    c$id$orig_h, c$id$resp_h, c$id$resp_p, duration_to_mins_secs(c$duration));
-		NOTICE([$note=LongConnection::found,
-		        $msg=message,
-		        $sub=fmt("%.2f", c$duration),
-		        $conn=c]);
+		if ( do_notice )
+			{
+			local message = fmt("%s -> %s:%s remained alive for longer than %s", 
+								c$id$orig_h, c$id$resp_h, c$id$resp_p, duration_to_mins_secs(c$duration));
+			NOTICE([$note=LongConnection::found,
+					$msg=message,
+					$sub=fmt("%.2f", c$duration),
+					$conn=c]);
+			}
 		
-		++c$long_conn_offset;
+		# Only increment the duration offset if there are more offsets
+		# or we aren't repeating the last duration
+		if (c$long_conn_offset < |check_it|-1 || !repeat_last_duration)
+			++c$long_conn_offset;
 		}
 
 	# Keep watching if there are potentially more thresholds.
